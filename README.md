@@ -9,9 +9,9 @@ Post-session housekeeping for [Claude Code](https://claude.com/claude-code) on m
 When you close a Claude Code session, dustbunny lints the codebase, analyzes the
 findings, and proposes **new skills or skill improvements** that would prevent
 them. The proposal is saved to `temp/<timestamp>.md`. The next time you open a
-session, the SessionStart hook points Claude at the pending files and a subagent
-reads them; Claude asks you `y/n` on each item, acts on your answers, then deletes
-the file. The repo is synced to GitHub after each run.
+session, the SessionStart hook points Claude at the pending files; Claude reads
+them inline, asks you `y/n` on each item, acts on your answers, then deletes the
+file. The repo is synced to GitHub after each run.
 
 ```
 session ends ──▶ SessionEnd hook ──▶ python dustbunny_agent.py (nohup, detached)
@@ -19,7 +19,7 @@ session ends ──▶ SessionEnd hook ──▶ python dustbunny_agent.py (nohu
                                             ├─ claude -p  → /lint + skill-gap analysis
                                             ├─ write temp/<timestamp>.md
                                             └─ git add / commit / push
-session opens ─▶ SessionStart hook ─▶ list temp/*.md → subagent reads them → prompt y/n → rm
+session opens ─▶ SessionStart hook ─▶ list temp/*.md → Claude reads them inline → prompt y/n → rm
 ```
 
 The `SessionEnd` hook runs the agent with `nohup … &` so it survives the session
@@ -70,7 +70,7 @@ cp lint.md /path/to/project/.claude/skills/lint/SKILL.md
     ],
     "SessionStart": [
       { "hooks": [ { "type": "command",
-        "command": "fs=$(ls -t \"$CLAUDE_PROJECT_DIR/temp\"/*.md 2>/dev/null); [ -n \"$fs\" ] && printf '<dustbunny-proposals>\\nThere are pending dustbunny proposals. Use the Agent tool (general-purpose subagent) to read EACH file listed below and report every proposal it contains. Then, for EACH proposal, ask me \"Should I create/improve this skill? (y/n)\" and act on my answer. After every proposal in a file is handled, delete that file.\\n\\nFiles:\\n%s\\n</dustbunny-proposals>\\n' \"$fs\"" } ] }
+        "command": "fs=$(ls -t \"$CLAUDE_PROJECT_DIR/temp\"/*.md 2>/dev/null); [ -n \"$fs\" ] && printf '<dustbunny-proposals>\\nPending dustbunny proposals. Handle this inline in THIS session — do not delegate to a subagent. Read EACH file listed below with the Read tool, and for EACH proposal ask me \"Should I create/improve this skill? (y/n)\" and act on my answer. After every proposal in a file is handled, delete that file.\\n\\nFiles:\\n%s\\n</dustbunny-proposals>\\n' \"$fs\"" } ] }
     ]
   }
 }
