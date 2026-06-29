@@ -55,12 +55,14 @@ def main():
             f.write(f"# dustbunny analysis {stamp}\n\n"
                     f"(agent fallback — claude did not write the file)\n\n"
                     f"{result.stdout or result.stderr}\n")
-    git_sync(stamp)
+    git_sync(stamp, outfile)
 
 
-def git_sync(stamp):
-    # best-effort: a no-op commit or offline push must not crash the agent
-    subprocess.run(["git", "add", "-A"], cwd=PROJECT, check=False)
+def git_sync(stamp, outfile):
+    # best-effort: a no-op commit or offline push must not crash the agent.
+    # add ONLY our proposal file — a detached background agent must never sweep
+    # the user's dirty working tree into a commit/push (was `git add -A`).
+    subprocess.run(["git", "add", outfile], cwd=PROJECT, check=False)
     subprocess.run(["git", "commit", "-m", f"dustbunny: post-session lint analysis {stamp}"],
                    cwd=PROJECT, check=False)
     subprocess.run(["git", "push"], cwd=PROJECT, check=False)

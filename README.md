@@ -9,8 +9,9 @@ Post-session housekeeping for [Claude Code](https://claude.com/claude-code) on m
 When you close a Claude Code session, dustbunny lints the codebase, analyzes the
 findings, and proposes **new skills or skill improvements** that would prevent
 them. The proposal is saved to `temp/<timestamp>.md`. The next time you open a
-session, Claude reads the latest proposal, asks you `y/n` on each item, acts on
-your answers, then deletes the file. The repo is synced to GitHub after each run.
+session, the SessionStart hook points Claude at the pending files and a subagent
+reads them; Claude asks you `y/n` on each item, acts on your answers, then deletes
+the file. The repo is synced to GitHub after each run.
 
 ```
 session ends ──▶ SessionEnd hook ──▶ python dustbunny_agent.py (nohup, detached)
@@ -18,12 +19,14 @@ session ends ──▶ SessionEnd hook ──▶ python dustbunny_agent.py (nohu
                                             ├─ claude -p  → /lint + skill-gap analysis
                                             ├─ write temp/<timestamp>.md
                                             └─ git add / commit / push
-session opens ─▶ SessionStart hook ─▶ inject latest temp/*.md → prompt y/n → rm file
+session opens ─▶ SessionStart hook ─▶ list temp/*.md → subagent reads them → prompt y/n → rm
 ```
 
 The `SessionEnd` hook runs the agent with `nohup … &` so it survives the session
 exiting and keeps going while `claude -p` does its work. No launchd, no daemon —
-just the hook and the script.
+just the hook and the script. The hook is guarded by `DUSTBUNNY_OUTFILE` (which
+the headless `claude -p` child sets) so the agent's own session ending never
+re-spawns it — no fork bomb.
 
 ## Contents
 
@@ -63,11 +66,11 @@ cp lint.md /path/to/project/.claude/skills/lint/SKILL.md
   "hooks": {
     "SessionEnd": [
       { "hooks": [ { "type": "command",
-        "command": "nohup python3 \"$CLAUDE_PROJECT_DIR/dustbunny/dustbunny_agent.py\" >>/tmp/dustbunny.log 2>&1 &" } ] }
+        "command": "[ -n \"$DUSTBUNNY_OUTFILE\" ] || nohup python3 \"$CLAUDE_PROJECT_DIR/dustbunny/dustbunny_agent.py\" >>/tmp/dustbunny.log 2>&1 &" } ] }
     ],
     "SessionStart": [
       { "hooks": [ { "type": "command",
-        "command": "f=$(ls -t \"$CLAUDE_PROJECT_DIR/temp\"/*.md 2>/dev/null | head -1); [ -n \"$f\" ] && printf '<dustbunny-proposals>\\nFor EACH proposal below, ask the user \"Should I create/improve this skill? (y/n)\" and act on the answer. After all are processed, delete this file: %s\\n\\n%s\\n</dustbunny-proposals>\\n' \"$f\" \"$(cat \"$f\")\"" } ] }
+        "command": "fs=$(ls -t \"$CLAUDE_PROJECT_DIR/temp\"/*.md 2>/dev/null); [ -n \"$fs\" ] && printf '<dustbunny-proposals>\\nThere are pending dustbunny proposals. Use the Agent tool (general-purpose subagent) to read EACH file listed below and report every proposal it contains. Then, for EACH proposal, ask me \"Should I create/improve this skill? (y/n)\" and act on my answer. After every proposal in a file is handled, delete that file.\\n\\nFiles:\\n%s\\n</dustbunny-proposals>\\n' \"$fs\"" } ] }
     ]
   }
 }
