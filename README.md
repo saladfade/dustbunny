@@ -1,5 +1,9 @@
 # 🧹 dustbunny
 
+<p align="center">
+  <img src="dustbunny.png" alt="dustbunny mascot — a dust bunny holding a blueprint and a hammer" width="320">
+</p>
+
 Post-session housekeeping for [Claude Code](https://claude.com/claude-code) on macOS.
 
 When you close a Claude Code session, dustbunny lints the codebase, analyzes the
@@ -86,38 +90,33 @@ To disable: remove the two hooks from `settings.json`.
 
 ## Mega-prompt
 
-Paste this into Claude Code (run from your project root) to set everything up
-from scratch:
+**First, download this repo** — don't have Claude rebuild it. Clone it (or grab
+the ZIP from GitHub and unzip):
 
-> Set up **dustbunny** in this repo — a post-session linter that proposes skill
-> improvements. Do all of the following:
+```bash
+git clone https://github.com/saladfade/dustbunny.git
+```
+
+Then, from **your project root**, paste this into Claude Code (point it at wherever
+you downloaded the repo):
+
+> I've downloaded the **dustbunny** repo to `<path/to/dustbunny>`. These files
+> already exist — `dustbunny_agent.py`, `lint.md`, and the hooks documented in
+> its `README.md`. **Do NOT recreate, rewrite, or regenerate any of them from
+> scratch.** Your only job is to sort the existing files into the right places in
+> this project and wire up the hooks:
 >
-> 1. Create `dustbunny/dustbunny_agent.py`: a Python 3 agent (stdlib only) that
->    (a) reads `DUSTBUNNY_PROJECT` env var, defaulting to this repo's absolute
->    path; (b) makes a `temp/` dir; (c) runs `claude -p` headless with
->    `--permission-mode acceptEdits`, passing a prompt that tells Claude to use
->    the `/lint` skill, then write skill proposals to the file named in
->    `$DUSTBUNNY_OUTFILE`; (d) sets `DUSTBUNNY_OUTFILE` to
->    `temp/<YYYY-MM-DD_HH-MM-SS>.md`; (e) if that file wasn't written, dumps the
->    claude output there as a fallback; (f) runs `git add -A && git commit && git
->    push` best-effort. Add a `--selftest` that asserts the timestamp format and
->    that `claude` is on PATH.
-> 2. Create `.claude/skills/lint/SKILL.md`: a `/lint` skill that detects the
->    repo's existing linters (eslint/tsc/ruff/mypy/go vet/clippy/shellcheck —
->    never install new ones), applies only safe auto-fixes, then for each
->    *recurring* finding writes a proposal (`type`, `target`, `problem`,
->    `proposal`) to `$DUSTBUNNY_OUTFILE` or `temp/<timestamp>.md`. Proposals
->    only — no one-off findings, no fixes in that file.
-> 3. Add hooks to `.claude/settings.json`: a `SessionEnd` hook that runs
->    `nohup python3 "$CLAUDE_PROJECT_DIR/dustbunny/dustbunny_agent.py"
->    >>/tmp/dustbunny.log 2>&1 &` (detached so it survives the session closing),
->    and a `SessionStart` hook that finds the newest `temp/*.md`, prints it
->    wrapped in `<dustbunny-proposals>` tags with an instruction to ask me `y/n`
->    per proposal and then delete the file.
-> 4. Verify with `python3 dustbunny/dustbunny_agent.py --selftest` and one full
->    `python3 dustbunny/dustbunny_agent.py` run. Show me the resulting `temp/*.md`.
+> 1. Copy `dustbunny_agent.py` into `dustbunny/` in this project (create that dir
+>    plus a `temp/` dir). Leave the file's contents unchanged.
+> 2. Copy `lint.md` to `.claude/skills/lint/SKILL.md`, unchanged.
+> 3. Add the two hooks (`SessionEnd` + `SessionStart`) to
+>    `.claude/settings.json` exactly as written in the downloaded `README.md` —
+>    don't invent your own.
+> 4. Verify with `python3 dustbunny/dustbunny_agent.py --selftest`.
 >
-> Use absolute paths throughout. Tell me what you created and how to disable it.
+> Use absolute paths throughout. If a file already exists, ask before
+> overwriting. Don't edit the contents of the downloaded files — only move them
+> and add the hooks. Tell me what you placed where and how to disable it.
 
 ---
 
